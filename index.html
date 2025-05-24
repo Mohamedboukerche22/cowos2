@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow OS - Trial Online</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+        }
+
+        .desktop {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        }
+
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 48px;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        .start-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .start-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .cow-logo {
+            width: 24px;
+            height: 24px;
+            filter: brightness(0) invert(1);
+        }
+
+        .taskbar-apps {
+            display: flex;
+            gap: 8px;
+            margin-left: 16px;
+        }
+
+        .app-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+
+        .app-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .time {
+            margin-left: auto;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .window {
+            position: absolute;
+            background: rgba(40, 40, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            min-width: 600px;
+            min-height: 400px;
+            display: none;
+            overflow: hidden;
+        }
+
+        .window-header {
+            background: rgba(60, 60, 60, 0.8);
+            height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            cursor: move;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .window-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .window-control:hover {
+            transform: scale(1.2);
+        }
+
+        .close { background: #ff5f57; }
+        .minimize { background: #ffbd2e; }
+        .maximize { background: #28ca42; }
+
+        .window-content {
+            height: calc(100% - 40px);
+            color: white;
+            overflow: auto;
+        }
+
+        .terminal {
+            background: #1a1a1a;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            padding: 16px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .terminal-line {
+            margin-bottom: 4px;
+            white-space: pre-wrap;
+        }
+
+        .prompt {
+            color: #4CAF50;
+        }
+
+        .command {
+            color: #fff;
+        }
+
+        .output {
+            color: #ccc;
+            margin-left: 0;
+        }
+
+        .error {
+            color: #f44336;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            width: 100%;
+        }
+
+        .desktop-icons {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            width: 80px;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .desktop-icon-image {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .desktop-icon-label {
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .file-manager {
+            padding: 16px;
+        }
+
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .file-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .calculator {
+            padding: 20px;
+            background: #2a2a2a;
+        }
+
+        .calc-display {
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            text-align: right;
+            font-size: 24px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .calc-button {
+            background: #404040;
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+        }
+
+        .calc-button:hover {
+            background: #505050;
+            transform: scale(1.05);
+        }
+
+        .calc-button.operator {
+            background: #ff9500;
+        }
+
+        .calc-button.operator:hover {
+            background: #ffad33;
+        }
+
+        .text-editor {
+            padding: 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .editor-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .editor-area {
+            flex: 1;
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .window.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .cursor {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icons">
+            <div class="desktop-icon" onclick="openApp('terminal')">
+                <div class="desktop-icon-image">💻</div>
+                <div class="desktop-icon-label">Terminal</div>
+            </div>
+            <div class="desktop-icon" onclick="openApp('files')">
+                <div class="desktop-icon-image">📁</div>
+                <div class="desktop-icon-label">Files</div>
+            </div>
+            <div class="desktop-icon" onclick="openApp('calculator')">
+                <div class="desktop-icon-image">🧮</div>
+                <div class="desktop-icon-label">Calculator</div>
+            </div>
+            <div class="desktop-icon" onclick="openApp('editor')">
+                <div class="desktop-icon-image">📝</div>
+                <div class="desktop-icon-label">Text Editor</div>
+            </div>
+        </div>
+
+        <!-- Terminal Window -->
+        <div id="terminal-window" class="window" style="top: 100px; left: 100px; width: 800px; height: 500px;">
+            <div class="window-header">
+                <div class="window-title">🐄 Cow OS Terminal</div>
+                <div class="window-controls">
+                    <div class="window-control minimize"></div>
+                    <div class="window-control maximize"></div>
+                    <div class="window-control close" onclick="closeWindow('terminal-window')"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line">
+                        <span style="color: #4CAF50;">Welcome to Cow OS Terminal v1.0</span>
+                    </div>
+                    <div class="terminal-line">
+                        <span style="color: #2196F3;">Type 'help' to see available commands</span>
+                    </div>
+                    <div class="terminal-line"></div>
+                    <div class="terminal-line" id="current-line">
+                        <span class="prompt">cow@cowos:~$ </span>
+                        <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Manager Window -->
+        <div id="files-window" class="window" style="top: 120px; left: 200px; width: 700px; height: 500px;">
+            <div class="window-header">
+                <div class="window-title">📁 File Manager</div>
+                <div class="window-controls">
+                    <div class="window-control minimize"></div>
+                    <div class="window-control maximize"></div>
+                    <div class="window-control close" onclick="closeWindow('files-window')"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="file-manager">
+                    <div style="color: #4CAF50; font-weight: bold; margin-bottom: 16px;">📂 /home/user</div>
+                    <div class="file-list">
+                        <div class="file-item">
+                            <div style="font-size: 32px;">📄</div>
+                            <div>document.txt</div>
+                        </div>
+                        <div class="file-item">
+                            <div style="font-size: 32px;">🖼️</div>
+                            <div>image.png</div>
+                        </div>
+                        <div class="file-item">
+                            <div style="font-size: 32px;">📁</div>
+                            <div>Documents</div>
+                        </div>
+                        <div class="file-item">
+                            <div style="font-size: 32px;">📁</div>
+                            <div>Downloads</div>
+                        </div>
+                        <div class="file-item">
+                            <div style="font-size: 32px;">🎵</div>
+                            <div>music.mp3</div>
+                        </div>
+                        <div class="file-item">
+                            <div style="font-size: 32px;">🎬</div>
+                            <div>video.mp4</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculator Window -->
+        <div id="calculator-window" class="window" style="top: 140px; left: 300px; width: 300px; height: 400px;">
+            <div class="window-header">
+                <div class="window-title">🧮 Calculator</div>
+                <div class="window-controls">
+                    <div class="window-control minimize"></div>
+                    <div class="window-control maximize"></div>
+                    <div class="window-control close" onclick="closeWindow('calculator-window')"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="calculator">
+                    <div class="calc-display" id="calc-display">0</div>
+                    <div class="calc-buttons">
+                        <button class="calc-button" onclick="calcClear()">C</button>
+                        <button class="calc-button" onclick="calcInput('/')" class="operator">÷</button>
+                        <button class="calc-button" onclick="calcInput('*')" class="operator">×</button>
+                        <button class="calc-button" onclick="calcBackspace()">⌫</button>
+                        
+                        <button class="calc-button" onclick="calcInput('7')">7</button>
+                        <button class="calc-button" onclick="calcInput('8')">8</button>
+                        <button class="calc-button" onclick="calcInput('9')">9</button>
+                        <button class="calc-button operator" onclick="calcInput('-')">-</button>
+                        
+                        <button class="calc-button" onclick="calcInput('4')">4</button>
+                        <button class="calc-button" onclick="calcInput('5')">5</button>
+                        <button class="calc-button" onclick="calcInput('6')">6</button>
+                        <button class="calc-button operator" onclick="calcInput('+')">+</button>
+                        
+                        <button class="calc-button" onclick="calcInput('1')">1</button>
+                        <button class="calc-button" onclick="calcInput('2')">2</button>
+                        <button class="calc-button" onclick="calcInput('3')">3</button>
+                        <button class="calc-button operator" onclick="calcEquals()" style="grid-row: span 2;">=</button>
+                        
+                        <button class="calc-button" onclick="calcInput('0')" style="grid-column: span 2;">0</button>
+                        <button class="calc-button" onclick="calcInput('.')">.</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Text Editor Window -->
+        <div id="editor-window" class="window" style="top: 160px; left: 400px; width: 600px; height: 500px;">
+            <div class="window-header">
+                <div class="window-title">📝 Text Editor</div>
+                <div class="window-controls">
+                    <div class="window-control minimize"></div>
+                    <div class="window-control maximize"></div>
+                    <div class="window-control close" onclick="closeWindow('editor-window')"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="text-editor">
+                    <div class="editor-toolbar">
+                        <button class="editor-button" onclick="editorNew()">New</button>
+                        <button class="editor-button" onclick="editorSave()">Save</button>
+                        <button class="editor-button" onclick="editorCut()">Cut</button>
+                        <button class="editor-button" onclick="editorCopy()">Copy</button>
+                        <button class="editor-button" onclick="editorPaste()">Paste</button>
+                    </div>
+                    <textarea class="editor-area" id="editor-area" placeholder="Start typing..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taskbar -->
+        <div class="taskbar">
+            <button class="start-button">
+                <svg class="cow-logo" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 4L13.5 7.5C13.1 8.4 12.6 9.3 12 10.1C11.4 9.3 10.9 8.4 10.5 7.5L9 4L3 7V9L8.5 6.5L9.7 9.4C10.1 10.3 10.6 11.1 11.2 11.8L10 22H14L12.8 11.8C13.4 11.1 13.9 10.3 14.3 9.4L15.5 6.5L21 9Z"/>
+                </svg>
+                Cow OS
+            </button>
+            <div class="taskbar-apps">
+                <div class="app-icon" onclick="openApp('terminal')" title="Terminal">💻</div>
+                <div class="app-icon" onclick="openApp('files')" title="Files">📁</div>
+                <div class="app-icon" onclick="openApp('calculator')" title="Calculator">🧮</div>
+                <div class="app-icon" onclick="openApp('editor')" title="Text Editor">📝</div>
+            </div>
+            <div class="time" id="clock"></div>
+        </div>
+    </div>
+
+    <script>
+        // Terminal functionality
+        let terminalHistory = [];
+        let historyIndex = -1;
+        let currentPath = '/home/user';
+        let fileSystem = {
+            '/': {
+                'home': {
+                    'user': {
+                        'Documents': {
+                            'readme.txt': 'Welcome to Cow OS!\nThis is a Linux-like operating system running in your browser.',
+                            'notes.txt': 'My personal notes...'
+                        },
+                        'Downloads': {},
+                        'Pictures': {
+                            'wallpaper.jpg': '[Image file]'
+                        }
+                    }
+                },
+                'etc': {
+                    'hosts': '127.0.0.1 localhost\n::1 localhost'
+                },
+                'usr': {
+                    'bin': {}
+                }
+            }
+        };
+
+        // Calculator state
+        let calcDisplay = '0';
+        let calcPrevious = '';
+        let calcOperator = '';
+        let calcWaitingForOperand = false;
+
+        // Initialize
+        window.onload = function() {
+            updateClock();
+            setInterval(updateClock, 1000);
+            setupTerminal();
+            setupWindowDragging();
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('clock').textContent = timeStr;
+        }
+
+        function openApp(appName) {
+            const windowId = appName + '-window';
+            const window = document.getElementById(windowId);
+            if (window) {
+                window.classList.add('show');
+                if (appName === 'terminal') {
+                    document.getElementById('terminal-input').focus();
+                }
+            }
+        }
+
+        function closeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            if (window) {
+                window.classList.remove('show');
+            }
+        }
+
+        function setupTerminal() {
+            const input = document.getElementById('terminal-input');
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    executeCommand();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (historyIndex < terminalHistory.length - 1) {
+                        historyIndex++;
+                        input.value = terminalHistory[terminalHistory.length - 1 - historyIndex];
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                        input.value = terminalHistory[terminalHistory.length - 1 - historyIndex];
+                    } else if (historyIndex === 0) {
+                        historyIndex = -1;
+                        input.value = '';
+                    }
+                }
+            });
+        }
+
+        function executeCommand() {
+            const input = document.getElementById('terminal-input');
+            const command = input.value.trim();
+            const terminal = document.getElementById('terminal');
+            
+            if (command) {
+                terminalHistory.push(command);
+                historyIndex = -1;
+            }
+
+            // Add command to terminal
+            const commandLine = document.createElement('div');
+            commandLine.className = 'terminal-line';
+            commandLine.innerHTML = `<span class="prompt">cow@cowos:${currentPath}$ </span><span class="command">${command}</span>`;
+            terminal.insertBefore(commandLine, document.getElementById('current-line'));
+
+            // Execute command
+            const output = processCommand(command);
+            if (output) {
+                const outputLine = document.createElement('div');
+                outputLine.className = 'terminal-line output';
+                outputLine.textContent = output;
+                terminal.insertBefore(outputLine, document.getElementById('current-line'));
+            }
+
+            // Clear input and scroll to bottom
+            input.value = '';
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function processCommand(command) {
+            const parts = command.split(' ');
+            const cmd = parts[0];
+            const args = parts.slice(1);
+
+            switch (cmd) {
+                case 'help':
+                    return `Available commands:
+help     - Show this help message
+ls       - List directory contents
+cd       - Change directory
+pwd      - Print working directory
+cat      - Display file contents
+mkdir    - Create directory
+touch    - Create file
+rm       - Remove file
+clear    - Clear terminal
+cowsay   - Make the cow say something
+date     - Show current date and time
+whoami   - Show current user
+uname    - Show system information
+ps       - Show running processes
+cowos    - Show Cow OS information`;
+
+                case 'ls':
+                    return listDirectory(currentPath);
+
+                case 'pwd':
+                    return currentPath;
+
+                case 'cd':
+                    return changeDirectory(args[0] || '/home/user');
+
+                case 'cat':
+                    return readFile(args[0]);
+
+                case 'clear':
+                    clearTerminal();
+                    return '';
+
+                case 'cowsay':
+                    const message = args.join(' ') || 'Moo!';
+                    return `
+ ${'_'.repeat(message.length + 2)}
+< ${message} >
+ ${'-'.repeat(message.length + 2)}
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||`;
+
+                case 'date':
+                    return new Date().toString();
+
+                case 'whoami':
+                    return 'user';
+
+                case 'uname':
+                    return 'Cow OS 1.0 (cowos-kernel)';
+
+                case 'ps':
+                    return `PID  COMMAND
+  1  systemd
+  2  cow-desktop
+  3  cow-terminal
+  4  cow-filemanager`;
+
+                case 'cowos':
+                    return `
+🐄 Cow OS v1.0 - The Moost Advanced OS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Built with HTML5, CSS3, and JavaScript
+Features:
+• Full terminal emulation
+• Window management
+• File system simulation
+• Built-in applications
+• And much moo-re!
+
+Made with ❤️ for the Linux community`;
+
+                case 'mkdir':
+                    return createDirectory(args[0]);
+
+                case 'touch':
+                    return createFile(args[0]);
+
+                case 'rm':
+                    return removeFile(args[0]);
+
+                case '':
+                    return '';
+
+                default:
+                    return `cowsh: command not found: ${cmd}`;
+            }
+        }
+
+        function listDirectory(path) {
+            const dir = getDirectory(path);
+            if (!dir) return `ls: cannot access '${path}': No such file or directory`;
+            
+            const items = Object.keys(dir).sort();
+            return items.length > 0 ? items.join('  ') : '';
+        }
+
+        function changeDirectory(path) {
+            if (!path || path === '~') {
+                currentPath = '/home/user';
+                return '';
+            }
+            
+            if (path === '..') {
+                const parts = currentPath.split('/').filter(p => p);
+                parts.pop();
+                currentPath = '/' + parts.join('/');
+                if (currentPath === '/') currentPath = '/';
+                return '';
+            }
+            
+            if (path.startsWith('/')) {
+                if (getDirectory(path)) {
+                    currentPath = path;
+                    return '';
+                }
+            } else {
+                const newPath = currentPath === '/' ? '/' + path : currentPath + '/' + path;
+                if (getDirectory(newPath)) {
+                    currentPath = newPath;
+                    return '';
+                }
+            }
+            
+            return `cd: no such file or directory: ${path}`;
+        }
+
+        function readFile(filename) {
+            if (!filename) return 'cat: missing file operand';
+            
+            const path = currentPath === '/' ? '/' + filename : currentPath + '/' + filename;
+            const file = getFile(path);
+            
+            if (file === null) {
+                const dir = getDirectory(currentPath);
+                if (dir && dir[filename] && typeof dir[filename] === 'object') {
+                    return `cat: ${filename}: Is a directory`;
+                }
+                return `cat: ${filename}: No such file or directory`;
+            }
+            
+            return file;
+        }
+
+        function getDirectory(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = fileSystem['/'];
+            
+            for (const part of parts) {
+                if (current[part] && typeof current[part] === 'object' && !Array.isArray(current[part])) {
+                    current = current[part];
+                } else {
+                    return null;
+                }
+            }
+            
+            return current;
+        }
+
+        function getFile(path) {
+            const parts = path.split('/').filter(p => p);
+            const filename = parts.pop();
+            const dirPath = '/' + parts.join('/');
+            const dir = getDirectory(dirPath);
+            
+            if (dir && dir[filename] && typeof dir[filename] === 'string') {
+                return dir[filename];
+            }
+            
+            return null;
+        }
+
+        function clearTerminal() {
+            const terminal = document.getElementById('terminal');
+            const currentLine = document.getElementById('current-line');
+            terminal.innerHTML = '';
+            terminal.appendChild(currentLine);
+        }
+
+        function calcInput(value) {
+            const display = document.getElementById('calc-display');
+            
+            if (['+', '-', '*', '/'].includes(value)) {
+                if (calcPrevious !== '' && !calcWaitingForOperand) {
